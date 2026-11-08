@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101114">
+<meta name="description" content="GROW AI STUDIO — editor video gratis di browser.">
+<title>GROW AI STUDIO</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{--bg:#101114;--panel:#191b20;--panel2:#22252c;--line:#30343d;--text:#f5f5f6;--muted:#a7abb5;--accent:#a6e65b;--accent2:#d1ff91;--danger:#ff786f}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+button,input,select{font:inherit}button{cursor:pointer;border:0}
+.app{max-width:1120px;margin:auto;padding:18px 16px 36px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:850;letter-spacing:.07em;font-size:17px}
+.logo{width:34px;height:34px;border-radius:11px;background:var(--accent);color:#151812;display:grid;place-items:center;font-weight:950;font-size:18px}
+.header-actions{display:flex;gap:8px;align-items:center}
+.pill,.secondary,.primary{border-radius:12px;padding:10px 13px;font-weight:700}
+.pill,.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.primary{background:var(--accent);color:#17200e}
+h1{font-size:clamp(24px,5vw,36px);line-height:1.1;margin:8px 0}
+.sub{color:var(--muted);margin:0 0 18px}
+.layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(270px,.85fr);gap:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:15px;min-width:0}
+.panel h2{font-size:15px;margin:0 0 12px}
+.preview{background:#08090b;border:1px solid #292c33;border-radius:14px;min-height:210px;aspect-ratio:16/9;display:grid;place-items:center;overflow:hidden;position:relative}
+video{width:100%;height:100%;object-fit:contain;display:block}
+.placeholder{text-align:center;color:var(--muted);padding:20px}
+.placeholder .symbol{font-size:35px;margin-bottom:8px}
+.upload{display:block;text-align:center;border:1px dashed #505662;border-radius:13px;padding:13px;margin-top:12px;color:var(--muted)}
+input[type=file]{display:none}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+label{font-size:12px;color:var(--muted);font-weight:700}
+input[type=number],input[type=text],select{width:100%;background:#111318;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.actions button{flex:1;min-width:125px}
+.hint{font-size:12px;color:var(--muted);margin:10px 0 0}
+.status{font-size:12px;color:var(--muted);margin-top:10px;min-height:18px}
+.progress{height:6px;background:#30343d;border-radius:9px;overflow:hidden;margin-top:8px;display:none}
+.progress>div{height:100%;width:0;background:var(--accent);transition:width .2s}
+.full{grid-column:1/-1}
+.feature-list{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px}
+.feature{background:var(--panel2);border-radius:12px;padding:11px}
+.feature b{display:block;font-size:13px}.feature span{font-size:11px;color:var(--muted)}
+footer{color:var(--muted);font-size:11px;text-align:center;margin:20px 0 0}
+button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.full{grid-column:auto}.feature-list{grid-template-columns:1fr 1fr}.app{padding:14px 12px 28px}.preview{min-height:190px}}
+@media(max-width:380px){.brand{font-size:14px}.pill,.secondary,.primary{padding:9px 10px}.controls{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand"><div class="logo">G</div><span>GROW AI STUDIO</span></div>
+  <div class="header-actions">
+    <button class="pill" id="langBtn" type="button">ID / EN</button>
+    <button class="secondary" id="resetBtn" type="button">Reset</button>
+  </div>
+</header>
+<h1 data-i18n="title">Studio video di genggamanmu.</h1>
+<p class="sub" data-i18n="subtitle">Versi 1.0 · Editor video gratis yang berjalan langsung di browser.</p>
+
+<div class="layout">
+<section class="panel">
+  <h2 data-i18n="preview">Pratinjau video</h2>
+  <div class="preview" id="preview">
+    <div class="placeholder" id="placeholder"><div class="symbol">▶</div><b data-i18n="empty">Belum ada video</b><div data-i18n="emptyHint">Pilih video dari perangkat untuk mulai mengedit.</div></div>
+    <video id="video" controls playsinline hidden></video>
+  </div>
+  <label class="upload" for="fileInput"><span data-i18n="choose">＋ Pilih video dari perangkat</span></label>
+  <input id="fileInput" type="file" accept="video/*">
+  <div class="controls">
+    <div class="field"><label for="start" data-i18n="start">Mulai (detik)</label><input id="start" type="number" min="0" step="0.1" value="0"></div>
+    <div class="field"><label for="end" data-i18n="end">Selesai (detik)</label><input id="end" type="number" min="0" step="0.1" placeholder="Durasi video"></div>
+    <div class="field"><label for="ratio" data-i18n="ratio">Rasio keluaran</label><select id="ratio"><option value="original" data-i18n="original">Asli</option><option value="9:16">9:16 · Reels / TikTok</option><option value="16:9">16:9 · YouTube</option><option value="1:1">1:1 · Persegi</option></select></div>
+    <div class="field"><label for="quality" data-i18n="quality">Kualitas</label><select id="quality"><option value="23">Tinggi</option><option value="28">Seimbang</option><option value="32">Ukuran kecil</option></select></div>
+  </div>
+  <div class="actions">
+    <button class="secondary" id="playBtn" disabled data-i18n="play">Putar pilihan</button>
+    <button class="primary" id="exportBtn" disabled data-i18n="export">Export MP4</button>
+  </div>
+  <div class="progress" id="progress"><div id="bar"></div></div>
+  <div class="status" id="status" aria-live="polite"></div>
+  <p class="hint" data-i18n="trimHint">Tips: atur waktu mulai dan selesai, lalu export. File diproses di browser; video besar mungkin membutuhkan memori besar.</p>
+</section>
+
+<aside class="panel">
+  <h2 data-i18n="tools">Alat editor</h2>
+  <div class="field">
+    <label for="filename" data-i18n="filename">Nama file hasil</label>
+    <input id="filename" type="text" value="grow-video" maxlength="50">
+  </div>
+  <div class="field" style="margin-top:12px">
+    <label data-i18n="about">Tentang versi ini</label>
+    <div class="feature-list" style="grid-template-columns:1fr">
+      <div class="feature"><b>✂️ <span data-i18n="trim">Potong video</span></b><span data-i18n="trimDesc">Atur titik mulai dan selesai.</span></div>
+      <div class="feature"><b>📐 <span data-i18n="crop">Ubah rasio</span></b><span data-i18n="cropDesc">Pilih format vertikal, horizontal, atau persegi.</span></div>
+      <div class="feature"><b>📦 <span data-i18n="exportFeature">Export MP4</span></b><span data-i18n="exportDesc">Simpan hasil ke perangkat.</span></div>
+    </div>
+  </div>
+  <div class="field" style="margin-top:14px">
+    <label data-i18n="next">Tahap berikutnya</label>
+    <p class="hint" style="margin:0" data-i18n="nextDesc">Generasi video AI, subtitle otomatis, teks overlay, musik, dan editing dengan perintah AI akan ditambahkan setelah versi dasar ini stabil.</p>
+  </div>
+</aside>
+
+<section class="panel full">
+  <h2 data-i18n="how">Cara kerja & privasi</h2>
+  <p class="hint" data-i18n="privacy">Video dipilih dari perangkat dan diproses secara lokal di browser menggunakan FFmpeg.wasm. Tidak ada akun atau server upload dari aplikasi ini. Saat pertama export, browser perlu mengunduh mesin FFmpeg dari CDN sehingga membutuhkan internet.</p>
+  <p class="hint" data-i18n="limit">Batasan: fitur ini adalah editor dasar, belum menghasilkan video AI. iPad/HP memiliki batas memori; mulai dengan klip pendek beresolusi rendah. Jika tab tertutup atau browser menghentikan proses, coba lagi dengan file lebih kecil.</p>
+</section>
+</div>
+<footer>GROW AI STUDIO · Free browser-based MVP · v1.2</footer>
+</div>
+
+<script type="module">
+const $=id=>document.getElementById(id);
+let file=null, videoURL=null, ffmpeg=null, lang='id';
+const dict={
+id:{title:'Studio video di genggamanmu.',subtitle:'Versi 1.0 · Editor video gratis yang berjalan langsung di browser.',preview:'Pratinjau video',empty:'Belum ada video',emptyHint:'Pilih video dari perangkat untuk mulai mengedit.',choose:'＋ Pilih video dari perangkat',start:'Mulai (detik)',end:'Selesai (detik)',ratio:'Rasio keluaran',original:'Asli',quality:'Kualitas',play:'Putar pilihan',export:'Export MP4',trimHint:'Tips: atur waktu mulai dan selesai, lalu export. File diproses di browser; video besar mungkin membutuhkan memori besar.',tools:'Alat editor',filename:'Nama file hasil',about:'Tentang versi ini',trim:'Potong video',trimDesc:'Atur titik mulai dan selesai.',crop:'Ubah rasio',cropDesc:'Pilih format vertikal, horizontal, atau persegi.',exportFeature:'Export MP4',exportDesc:'Simpan hasil ke perangkat.',next:'Tahap berikutnya',nextDesc:'Generasi video AI, subtitle otomatis, teks overlay, musik, dan editing dengan perintah AI akan ditambahkan setelah versi dasar ini stabil.',how:'Cara kerja & privasi',privacy:'Video dipilih dari perangkat dan diproses secara lokal di browser menggunakan FFmpeg.wasm. Tidak ada akun atau server upload dari aplikasi ini. Saat pertama export, browser perlu mengunduh mesin FFmpeg dari CDN sehingga membutuhkan internet.',limit:'Batasan: fitur ini adalah editor dasar, belum menghasilkan video AI. iPad/HP memiliki batas memori; mulai dengan klip pendek beresolusi rendah. Jika tab tertutup atau browser menghentikan proses, coba lagi dengan file lebih kecil.',loaded:'Video siap diedit.',loading:'Menyiapkan mesin export… (pertama kali perlu internet)',processing:'Sedang memproses video…',done:'Selesai! File hasil siap diunduh.',error:'Export gagal. Coba video lebih pendek atau lebih kecil.',need:'Pilih video terlebih dahulu.',badTime:'Waktu selesai harus lebih besar dari waktu mulai.'},
+en:{title:'Your video studio, in your pocket.',subtitle:'Version 1.0 · A free video editor that runs in your browser.',preview:'Video preview',empty:'No video yet',emptyHint:'Choose a video from your device to start editing.',choose:'＋ Choose a video from device',start:'Start (seconds)',end:'End (seconds)',ratio:'Output aspect ratio',original:'Original',quality:'Quality',play:'Play selection',export:'Export MP4',trimHint:'Tip: set start and end times, then export. Processing happens in your browser; large videos may need lots of memory.',tools:'Editor tools',filename:'Output filename',about:'About this version',trim:'Trim video',trimDesc:'Set start and end points.',crop:'Change aspect ratio',cropDesc:'Choose vertical, horizontal, or square format.',exportFeature:'Export MP4',exportDesc:'Save the result to your device.',next:'Coming next',nextDesc:'AI video generation, auto subtitles, text overlays, music, and prompt-based editing will be added after this basic version is stable.',how:'How it works & privacy',privacy:'Your video is selected from your device and processed locally in your browser using FFmpeg.wasm. This app does not upload it to an account or server. On first export, your browser downloads the FFmpeg engine from a CDN, so internet is required.',limit:'Limitations: this is a basic editor, not an AI video generator yet. Phones and iPads have memory limits; start with short, lower-resolution clips. If the tab closes or the browser stops processing, retry with a smaller file.',loaded:'Video is ready to edit.',loading:'Preparing export engine… (internet required the first time)',processing:'Processing video…',done:'Done! Your file is ready to download.',error:'Export failed. Try a shorter or smaller video.',need:'Choose a video first.',badTime:'End time must be greater than start time.'}
+};
+function t(k){return dict[lang][k]||k}
+function setStatus(s){$('status').textContent=s}
+function setProgress(v,show=true){$('progress').style.display=show?'block':'none';$('bar').style.width=v+'%'}
+function applyLang(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n;if(dict[lang][k])el.textContent=dict[lang][k]});$('langBtn').textContent=lang==='id'?'ID / EN':'EN / ID'}
+$('langBtn').onclick=()=>{lang=lang==='id'?'en':'id';applyLang()};
+$('fileInput').onchange=e=>{
+ file=e.target.files?.[0];if(!file)return;
+ if(videoURL)URL.revokeObjectURL(videoURL);
+ videoURL=URL.createObjectURL(file);$('video').src=videoURL;$('video').hidden=false;$('placeholder').hidden=true;
+ $('video').onloadedmetadata=()=>{$('end').value=Number.isFinite($('video').duration)?$('video').duration.toFixed(1):'';$('exportBtn').disabled=false;$('playBtn').disabled=false;setStatus(t('loaded'))};
+};
+$('playBtn').onclick=()=>{if(!file)return;const s=Number($('start').value)||0,e=Number($('end').value)||$('video').duration;if(e<=s){setStatus(t('badTime'));return}$('video').currentTime=s;$('video').play();$('video').ontimeupdate=()=>{if($('video').currentTime>=e){$('video').pause();$('video').ontimeupdate=null}}};
+$('resetBtn').onclick=()=>{if(videoURL)URL.revokeObjectURL(videoURL);file=null;videoURL=null;$('fileInput').value='';$('video').removeAttribute('src');$('video').load();$('video').hidden=true;$('placeholder').hidden=false;$('start').value=0;$('end').value='';$('exportBtn').disabled=true;$('playBtn').disabled=true;setStatus('');setProgress(0,false)};
+async function loadEngine(){
+ if(ffmpeg)return ffmpeg;
+ setStatus(t('loading'));
+ const {FFmpeg}=await import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js');
+ const {toBlobURL}=await import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js');
+ const inst=new FFmpeg();
+ inst.on('progress',({progress})=>setProgress(Math.max(0,Math.min(99,Math.round(progress*100)))));
+ inst.on('log',({message})=>console.log(message));
+ const core='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+ const workerURL=URL.createObjectURL(new Blob(['import "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js";'],{type:'text/javascript'}));
+ await inst.load({classWorkerURL:workerURL,coreURL:await toBlobURL(core+'/ffmpeg-core.js','text/javascript'),wasmURL:await toBlobURL(core+'/ffmpeg-core.wasm','application/wasm')});
+ ffmpeg=inst;
+ return ffmpeg;
+}
+$('exportBtn').onclick=async()=>{
+ if(!file){setStatus(t('need'));return}
+ const start=Math.max(0,Number($('start').value)||0);
+ const end=Number($('end').value)||$('video').duration;
+ if(!(end>start)){setStatus(t('badTime'));return}
+ $('exportBtn').disabled=true;$('playBtn').disabled=true;setProgress(0);setStatus(t('processing'));
+ try{
+  const engine=await loadEngine();
+  const ext=(file.name.split('.').pop()||'mp4').toLowerCase().replace(/[^a-z0-9]/g,'')||'mp4';
+  const input='input.'+ext,output='grow-output.mp4';
+  await engine.writeFile(input,new Uint8Array(await file.arrayBuffer()));
+  const args=['-ss',String(start),'-i',input,'-t',String(end-start)];
+  const ratio=$('ratio').value;
+  if(ratio==='9:16')args.push('-vf',"crop='if(gt(iw/ih,9/16),trunc(ih*9/16/2)*2,trunc(iw/2)*2)':'if(gt(iw/ih,9/16),trunc(ih/2)*2,trunc(iw*16/9/2)*2)'");
+  if(ratio==='16:9')args.push('-vf',"crop='if(gt(iw/ih,16/9),trunc(ih*16/9/2)*2,trunc(iw/2)*2)':'if(gt(iw/ih,16/9),trunc(ih/2)*2,trunc(iw*9/16/2)*2)'");
+  if(ratio==='1:1')args.push('-vf',"crop='min(iw,ih)':'min(iw,ih)',scale=720:720");
+  args.push('-c:v','libx264','-preset','ultrafast','-crf',$('quality').value,'-c:a','aac','-b:a','128k','-movflags','+faststart',output);
+  await engine.exec(args);
+  const data=await engine.readFile(output);
+  const blob=new Blob([data],{type:'video/mp4'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  const name=($('filename').value.trim()||'grow-video').replace(/[^\w-]+/g,'-');
+  a.href=url;a.download=name+'.mp4';a.textContent='⬇ '+name+'.mp4';a.className='primary';a.style.cssText='display:block;text-align:center;text-decoration:none;margin-top:10px';$('saveLink')?.remove();a.id='saveLink';$('status').after(a);try{a.click()}catch(e){}
+  
+  setProgress(100);setStatus(t('done'));
+  await engine.deleteFile(input);await engine.deleteFile(output);
+ }catch(err){console.error(err);setStatus(t('error')+' ['+(err&&err.message?err.message:err)+']');setProgress(0,false)}
+ finally{$('exportBtn').disabled=false;$('playBtn').disabled=false}
+};
+function applyRatio(){
+ const v=$('ratio').value,vid=$('video'),box=$('preview');
+ let w,h;
+ if(v==='original'){w=vid.videoWidth||16;h=vid.videoHeight||9}else{[w,h]=v.split(':').map(Number)}
+ box.style.aspectRatio=w+'/'+h;box.style.minHeight='0';box.style.margin='0 auto';box.style.width='min(100%,'+(70*w/h)+'vh)';
+ vid.style.objectFit=v==='original'?'contain':'cover';
+}
+$('ratio').addEventListener('change',applyRatio);
+$('video').addEventListener('loadedmetadata',applyRatio);
+applyLang();
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
