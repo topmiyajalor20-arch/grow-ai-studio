@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="id"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000"><title>GROW AI STUDIO</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{--p:#16171b;--p2:#24262c;--t:#f5f5f6;--m:#9a9ea8;--a:#a6e65b}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:#000;color:var(--t);font:14px -apple-system,"Segoe UI",Arial,sans-serif;overflow:hidden}
+#app{height:100%;display:flex;flex-direction:column;max-width:900px;margin:0 auto;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+header{display:flex;align-items:center;gap:8px;padding:8px 12px}header .sp{flex:1}
+button,select{font:inherit;color:var(--t);background:var(--p2);border:0;border-radius:10px;padding:8px 12px}
+button:disabled{opacity:.5}.go{background:var(--a);color:#111;font-weight:700}
+main{flex:1;min-height:0;display:flex;flex-direction:column}
+#stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative;padding:4px 12px}
+#box{position:relative;overflow:hidden;background:#111;border-radius:6px;font-size:calc(var(--bh,200px)/20)}
+#video{position:absolute;inset:0;width:100%;height:100%}
+#box.vig::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 8vmin 3vmin #000;pointer-events:none}
+#ov{position:absolute;left:5%;right:5%;text-align:center;font-weight:700;text-shadow:0 0 4px #000,0 0 4px #000;white-space:pre-wrap}
+#ov.top{top:8%}#ov.mid{top:45%}#ov.bot{bottom:8%}
+#empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+#info{padding:0 12px}#progress{display:none;height:4px;background:#333;border-radius:4px;overflow:hidden}#bar{display:block;height:100%;width:0;background:var(--a)}
+#status{color:var(--m);font-size:12px;min-height:18px;padding:2px 0}
+.ctl{display:flex;align-items:center;gap:12px;padding:2px 12px 6px;color:var(--m)}#tc{font-variant-numeric:tabular-nums}
+#tlw{position:relative;background:var(--p)}
+#head{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#fff;pointer-events:none;z-index:3}
+#tl{height:92px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}#tl::-webkit-scrollbar{display:none}
+#track{display:flex;align-items:center;height:100%;padding:0 50%;width:max-content}
+.clip{flex:none;height:56px;border-radius:6px;border:2px solid #333;background:#2a2d34 repeat-x;background-size:auto 100%}.clip.sel{border-color:#fff}
+.add{flex:none;width:44px;height:56px;margin-left:6px;background:#fff;color:#000;font-size:24px;padding:0}
+#sheet{display:none;background:var(--p);padding:8px 12px;max-height:34vh;overflow:auto;border-top:1px solid #2a2d34}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
+.chip{border-radius:99px;padding:7px 12px}.chip.on{background:var(--a);color:#111}
+input{background:var(--p2);color:var(--t);border:1px solid #333;border-radius:8px;padding:7px;width:84px;font:inherit}#tx{flex:1;min-width:140px}
+#tools{display:flex;overflow-x:auto;background:#0d0e10;border-top:1px solid #222;scrollbar-width:none}
+#tools button{flex:none;background:none;display:flex;flex-direction:column;align-items:center;min-width:66px;color:var(--m);padding:8px 6px;border-radius:0}
+#tools button.on{color:var(--a)}#tools b{font-size:19px;font-weight:600}#tools small{font-size:11px}
+</style></head><body>
+<div id="app">
+<header><button id="reset">✕</button><b>GROW AI</b><span class="sp"></span>
+<select id="ratio"><option value="original">Asli</option><option value="9:16">9:16</option><option value="16:9">16:9</option><option value="1:1">1:1</option></select>
+<select id="quality"><option value="20">Tinggi</option><option value="24">Sedang</option><option value="28">Ringan</option></select>
+<button id="exportBtn" class="go">⬆ Export</button></header>
+<main>
+<div id="stage"><div id="box"><video id="video" playsinline></video><div id="ov"></div></div><div id="empty"><button id="pick" class="go">＋ Pilih video dari perangkat</button></div></div>
+<div id="info"><div id="progress"><i id="bar"></i></div><div id="status"></div></div>
+<div class="ctl"><button id="play">▶</button><span id="tc">00:00 / 00:00</span></div>
+<div id="tlw"><div id="head"></div><div id="tl"><div id="track"></div></div></div>
+</main>
+<div id="sheet"></div><nav id="tools"></nav>
+</div>
+<input id="fileInput" type="file" accept="video/*" multiple hidden>
+<script type="module">
+const $=id=>document.getElementById(id),PPS=40,video=$('video');
+let ffmpeg=null,logBuf=[],clips=[],sel=0,cur=0,playing=false,loading=false,pending=0,lock=0,openT='';
+const S={fx:'',fl:'',tr:'',sub:'',model:'Xenova/whisper-base',sp:1,vol:1,mute:false,texts:[],tpos:'bot'};
+const FL={'':['Normal','',''],bw:['Hitam putih','hue=s=0','grayscale(1)'],sepia:['Sepia','colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131','sepia(1)'],vivid:['Cerah','eq=saturation=1.6:contrast=1.1','saturate(1.6) contrast(1.1)'],warm:['Hangat','colorchannelmixer=rr=1.1:bb=0.9','sepia(.3) saturate(1.3)'],cool:['Dingin','colorchannelmixer=rr=0.9:bb=1.1','hue-rotate(-12deg) saturate(1.1)'],cine:['Sinematik','eq=contrast=1.2:saturation=0.85:brightness=-0.03','contrast(1.2) saturate(.85) brightness(.97)'],fade:['Pudar','eq=contrast=0.85:brightness=0.06:saturation=0.8','contrast(.85) brightness(1.06) saturate(.8)'],neg:['Negatif','negate','invert(1)'],bright:['Terang','eq=brightness=0.12','brightness(1.12)']};
+const FX={'':['Tanpa','',''],blur:['Blur','boxblur=6:1','blur(3px)'],vig:['Vignette','vignette',''],mirror:['Cermin','hflip',''],flip:['Terbalik','vflip',''],grain:['Grain','noise=alls=20:allf=t',''],sharp:['Tajam','unsharp=5:5:1.0','contrast(1.1)'],pix:['Pixel','scale=iw/16:ih/16,scale=iw*16:ih*16:flags=neighbor',''],glitch:['Glitch','rgbashift=rh=8:bh=-8',''],sketch:['Sketsa','edgedetect=low=0.1:high=0.3',''],fadein:['Fade in','fade=t=in:st=0:d=0.6','']};
+const TR={'':['Potong'],fade:['Fade'],dissolve:['Dissolve'],fadeblack:['Fade hitam'],fadewhite:['Fade putih'],wipeleft:['Wipe kiri'],wiperight:['Wipe kanan'],slideleft:['Slide kiri'],slideright:['Slide kanan'],slideup:['Slide atas'],circleopen:['Lingkaran buka'],circleclose:['Lingkaran tutup'],radial:['Radial'],pixelize:['Pixelize'],zoomin:['Zoom in'],diagtl:['Diagonal'],smoothleft:['Smooth']};
+const SUB={'':['Mati'],indonesian:['Indonesia'],english:['English']},MD={'Xenova/whisper-base':['Base (akurat)'],'Xenova/whisper-tiny':['Tiny (cepat)']},POS={bot:['Bawah'],mid:['Tengah'],top:['Atas']};
+const SP=[['0.5',['0.5×']],['1',['1×']],['1.5',['1.5×']],['2',['2×']]];
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fmt=t=>{t=Math.max(0,t);return String(Math.floor(t/60)).padStart(2,'0')+':'+String(Math.floor(t%60)).padStart(2,'0')};
+const total=()=>clips.reduce((a,c)=>a+c.e-c.s,0),acc=i=>clips.slice(0,i).reduce((a,c)=>a+c.e-c.s,0);
+function setStatus(s){$('status').textContent=s}
+function setProgress(v,show=true){$('progress').style.display=show?'block':'none';$('bar').style.width=v+'%'}
+function fit(){const r0=$('ratio').value;let w0=16,h0=9;if(r0==='original'){if(clips[0]){w0=clips[0].w;h0=clips[0].h}}else[w0,h0]=r0.split(':').map(Number);const st=$('stage'),W=st.clientWidth-24,H=st.clientHeight-8,r=w0/h0;let w=W,h=W/r;if(h>H){h=H;w=H*r}const b=$('box');b.style.width=Math.max(0,w)+'px';b.style.height=Math.max(0,h)+'px';b.style.setProperty('--bh',Math.max(0,h)+'px');video.style.objectFit=r0==='original'?'contain':'cover'}
+function applyFx(){video.style.filter=[FL[S.fl][2],FX[S.fx][2]].filter(Boolean).join(' ');video.style.transform=S.fx==='mirror'?'scaleX(-1)':S.fx==='flip'?'scaleY(-1)':'';$('box').classList.toggle('vig',S.fx==='vig');video.volume=Math.min(1,S.vol);video.muted=S.mute}
+function ui(g){$('tc').textContent=fmt(g)+' / '+fmt(total());const x=S.texts.find(t=>g>=t.s&&g<=t.e),o=$('ov');o.textContent=x?x.t:'';o.className=x?x.pos:''}
+function renderTl(){const tr=$('track');tr.innerHTML='';clips.forEach((c,i)=>{const d=document.createElement('div');d.className='clip'+(i===sel?' sel':'');d.style.width=Math.max(24,(c.e-c.s)*PPS)+'px';if(c.th)d.style.backgroundImage='url('+c.th+')';d.onclick=()=>{sel=i;renderTl();if(openT==='edit')sheet('edit')};tr.appendChild(d)});const b=document.createElement('button');b.className='add';b.textContent='+';b.onclick=()=>$('fileInput').click();tr.appendChild(b);$('empty').style.display=clips.length?'none':'flex';ui(clips.length?Math.min(total(),$('tl').scrollLeft/PPS):0)}
+function load(i,t){cur=i;const c=clips[i];if(video.dataset.u===c.url){video.currentTime=t;return}loading=true;pending=t;video.dataset.u=c.url;video.src=c.url}
+video.addEventListener('loadedmetadata',()=>{video.currentTime=pending;loading=false;if(playing)video.play().catch(()=>{})});
+function seekGlobal(g){if(!clips.length)return;let a=0;for(let i=0;i<clips.length;i++){const l=clips[i].e-clips[i].s;if(g<a+l||i===clips.length-1){load(i,clips[i].s+Math.min(Math.max(0,g-a),l-0.01));return}a+=l}}
+function pause(){playing=false;video.pause();$('play').textContent='▶'}
+function sync(){const c=clips[cur];if(!c)return;const g=acc(cur)+Math.max(0,video.currentTime-c.s);lock=performance.now();$('tl').scrollLeft=g*PPS;ui(g)}
+function loop(){if(!playing)return;const c=clips[cur];if(!c){pause();return}if(!loading&&(video.currentTime>=c.e-0.03||video.ended)){if(cur<clips.length-1)load(cur+1,clips[cur+1].s);else{sync();pause();return}}if(!loading)sync();requestAnimationFrame(loop)}
+$('play').onclick=()=>{if(!clips.length)return;if(playing){pause();return}if($('tl').scrollLeft/PPS>=total()-0.05)seekGlobal(0);playing=true;$('play').textContent='❚❚';video.play().catch(()=>{});requestAnimationFrame(loop)};
+$('tl').addEventListener('scroll',()=>{if(performance.now()-lock<100)return;if(playing)pause();const g=Math.min(total(),$('tl').scrollLeft/PPS);seekGlobal(g);ui(g)});
+function meta(url){return new Promise(r=>{const v=document.createElement('video');v.muted=true;v.playsInline=true;v.preload='auto';let done=false;const fin=th=>{if(!done){done=true;r({dur:v.duration||0,w:v.videoWidth||1280,h:v.videoHeight||720,th})}};v.onloadedmetadata=()=>{v.currentTime=Math.min(0.3,(v.duration||1)/2)};v.onseeked=()=>{try{const c=document.createElement('canvas');c.height=112;c.width=Math.round(112*v.videoWidth/v.videoHeight)||200;c.getContext('2d').drawImage(v,0,0,c.width,c.height);fin(c.toDataURL('image/jpeg',.6))}catch(e){fin('')}};v.onerror=()=>fin('');setTimeout(()=>fin(''),8000);v.src=url})}
+$('pick').onclick=()=>$('fileInput').click();
+$('fileInput').onchange=async e=>{const fl=[...e.target.files];e.target.value='';if(!fl.length)return;setStatus('Memuat klip…');const first=!clips.length;for(const f of fl){const url=URL.createObjectURL(f),m=await meta(url);if(!(m.dur>0)){setStatus('Gagal membaca '+f.name);continue}clips.push({f,url,dur:m.dur,s:0,e:m.dur,w:m.w,h:m.h,th:m.th})}if(first&&clips.length)load(0,0);renderTl();fit();if(clips.length)setStatus('')};
+function split(){if(!clips.length)return;const g=$('tl').scrollLeft/PPS;let a=0;for(let i=0;i<clips.length;i++){const c=clips[i],l=c.e-c.s;if(g<a+l||i===clips.length-1){const loc=c.s+(g-a);if(loc-c.s>0.3&&c.e-loc>0.3){clips.splice(i+1,0,{...c,s:loc});c.e=loc;sel=i;renderTl()}else setStatus('Geser playhead ke dalam klip dulu.');return}a+=l}}
+function del(){if(!clips.length)return;clips.splice(sel,1);sel=Math.max(0,sel-1);if(clips.length)seekGlobal(0);else{pause();video.removeAttribute('src');delete video.dataset.u}renderTl()}
+function addText(){const t=$('tx').value.trim();if(!t)return;S.texts.push({t,s:+$('tS').value||0,e:+$('tE').value||3,pos:S.tpos});sheet('text')}
+const TOOLS=[['edit','✂','Edit'],['audio','♪','Audio'],['text','T','Teks'],['fx','✦','Efek'],['fl','◐','Filter'],['tr','⇄','Transisi'],['cap','CC','Caption']];
+$('tools').innerHTML=TOOLS.map(t=>`<button data-t="${t[0]}"><b>${t[1]}</b><small>${t[2]}</small></button>`).join('');
+$('tools').onclick=e=>{const b=e.target.closest('[data-t]');if(b)sheet(openT===b.dataset.t?'':b.dataset.t)};
+function sheet(n){openT=n;const sh=$('sheet'),c=clips[sel];document.querySelectorAll('#tools button').forEach(b=>b.classList.toggle('on',b.dataset.t===n));
+ if(!n){sh.style.display='none';fit();return}
+ const ch=(a,L,cur)=>(Array.isArray(L)?L:Object.entries(L)).map(([k,v])=>`<button class="chip${String(cur)===k?' on':''}" data-a="${a}" data-v="${k}">${v[0]}</button>`).join('');
+ let h='';
+ if(n==='edit')h='<div class="row"><button data-a="split">✂ Pisah</button><button data-a="del">🗑 Hapus</button><button data-a="add">＋ Klip</button></div>'+(c?`<div class="row"><label>Mulai <input id="ts" type="number" step=".1" value="${c.s.toFixed(1)}"></label><label>Selesai <input id="te" type="number" step=".1" value="${c.e.toFixed(1)}"></label></div>`:'')+'<div class="row">Kecepatan '+ch('sp',SP,S.sp)+'</div>';
+ if(n==='audio')h=`<div class="row"><label>Volume <input id="vol" type="range" min="0" max="200" value="${S.vol*100}"></label><label><input id="mute" type="checkbox" ${S.mute?'checked':''} style="width:auto"> Bisukan</label></div>`;
+ if(n==='text')h='<div class="row"><input id="tx" placeholder="Tulis teks…"><input id="tS" type="number" step=".1" value="0" title="Mulai"><input id="tE" type="number" step=".1" value="3" title="Selesai"></div><div class="row">Posisi '+ch('tpos',POS,S.tpos)+' <button class="go" data-a="tadd">Tambah</button></div>'+S.texts.map((x,i)=>`<div class="row">“${esc(x.t)}” ${x.s}–${x.e}s <button data-a="tdel" data-v="${i}">🗑</button></div>`).join('');
+ if(n==='fx')h=ch('fx',FX,S.fx);
+ if(n==='fl')h=ch('fl',FL,S.fl);
+ if(n==='tr')h=ch('tr',TR,S.tr)+'<div class="row" style="color:var(--m)">Berlaku antar klip saat digabung.</div>';
+ if(n==='cap')h='<div class="row">Bahasa '+ch('sub',SUB,S.sub)+'</div><div class="row">Model '+ch('model',MD,S.model)+'</div><div class="row" style="color:var(--m)">Subtitle dibuat saat export. Pertama kali butuh internet (unduh model).</div>';
+ sh.innerHTML=h;sh.style.display='block';fit()}
+$('sheet').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,v=b.dataset.v;
+ if(['fx','fl','tr','sub','model','tpos'].includes(a)){S[a]=v;applyFx();sheet(openT)}
+ else if(a==='sp'){S.sp=+v;sheet(openT)}else if(a==='split')split();else if(a==='del')del();else if(a==='add')$('fileInput').click();
+ else if(a==='tadd')addText();else if(a==='tdel'){S.texts.splice(+v,1);sheet('text')}};
+$('sheet').oninput=e=>{const c=clips[sel],id=e.target.id,v=+e.target.value;
+ if(id==='ts'&&c){c.s=Math.max(0,Math.min(v||0,c.e-0.2));renderTl()}
+ else if(id==='te'&&c){c.e=Math.min(c.dur,Math.max(v||0,c.s+0.2));renderTl()}
+ else if(id==='vol'){S.vol=v/100;applyFx()}else if(id==='mute'){S.mute=e.target.checked;applyFx()}};
+$('ratio').onchange=fit;addEventListener('resize',fit);
+$('reset').onclick=()=>{if(clips.length&&!confirm('Mulai ulang proyek? Semua klip dihapus.'))return;pause();clips.forEach(c=>URL.revokeObjectURL(c.url));clips=[];sel=0;video.removeAttribute('src');delete video.dataset.u;Object.assign(S,{fx:'',fl:'',tr:'',sub:'',sp:1,vol:1,mute:false,texts:[]});applyFx();$('saveLink')?.remove();setStatus('');$('tl').scrollLeft=0;renderTl();sheet('');fit()};
+
+async function loadEngine(){
+ if(ffmpeg)return ffmpeg;
+ const {FFmpeg}=await import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js');
+ const {toBlobURL}=await import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js');
+ const inst=new FFmpeg();
+ inst.on('progress',({progress})=>setProgress(Math.max(0,Math.min(99,Math.round(progress*100)))));
+ inst.on('log',({message})=>{console.log(message);logBuf.push(message)});
+ const core='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+ const workerURL=URL.createObjectURL(new Blob(['import "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js";'],{type:'text/javascript'}));
+ await inst.load({classWorkerURL:workerURL,coreURL:await toBlobURL(core+'/ffmpeg-core.js','text/javascript'),wasmURL:await toBlobURL(core+'/ffmpeg-core.wasm','application/wasm')});
+ ffmpeg=inst;return ffmpeg;
+}
+const FONT='https://raw.githubusercontent.com/ffmpegwasm/testdata/master/arial.ttf';
+async function probe(eng,name){logBuf=[];await eng.exec(['-i',name]);const L=logBuf.join('\n'),m=L.match(/Duration: (\d+):(\d+):([\d.]+)/);return{dur:m?+m[1]*3600+ +m[2]*60+ +m[3]:0,audio:/Audio:/.test(L)}}
+const vfs=(w,h,orig,sp)=>{let v=orig?`scale=${w}:${h}:force_original_aspect_ratio=decrease,pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2`:`scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`;if(sp!==1)v+=`,setpts=PTS/${sp}`;v+=',setsar=1,fps=30';for(const x of [FL[S.fl][1],FX[S.fx][1]])if(x)v+=','+x;return v+`,scale=${w}:${h},setsar=1,format=yuv420p`};
+const wrap=(s,m)=>{const o=[];let l='';for(const wd of s.split(/\s+/)){if((l+' '+wd).trim().length>m){o.push(l);l=wd}else l=(l+' '+wd).trim()}if(l)o.push(l);return o.join('\n')};
+async function transcribe(eng,src,lang,model){
+ setStatus('Mengambil audio…');
+ await eng.exec(['-i',src,'-vn','-ac','1','-ar','16000','-f','f32le','a.raw']);
+ const raw=await eng.readFile('a.raw');
+ const pcm=new Float32Array(raw.buffer.slice(raw.byteOffset,raw.byteOffset+raw.byteLength));
+ await eng.deleteFile('a.raw');
+ setStatus('Mengunduh model subtitle… (pertama kali butuh internet, bisa lama)');
+ const {pipeline,env}=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');
+ env.backends.onnx.wasm.numThreads=1;
+ const asr=await pipeline('automatic-speech-recognition',model,{dtype:'q8',device:'wasm'});
+ setStatus('Membuat subtitle… (di iPad bisa beberapa menit)');
+ const out=await asr(pcm,{language:lang,task:'transcribe',return_timestamps:true,chunk_length_s:30,stride_length_s:5});
+ return (out.chunks||[]).map(c=>({s:c.timestamp[0],e:c.timestamp[1]??c.timestamp[0]+2,t:c.text.trim()})).filter(c=>c.t);
+}
+async function burn(eng,src,items,w,h,crf,made){
+ setStatus('Memasang teks/subtitle ke video…');
+ const f=await fetch(FONT);if(!f.ok)throw new Error('font gagal diunduh');
+ await eng.writeFile('f.ttf',new Uint8Array(await f.arrayBuffer()));made.push('f.ttf');
+ const fs=Math.round(h/22),mc=Math.floor(w*0.9/(fs*0.52)),y=Math.round(h*0.08),yy={top:String(y),mid:'(h-text_h)/2',bot:'h-text_h-'+y},parts=[];
+ for(let i=0;i<items.length;i++){const c=items[i];await eng.writeFile('s'+i+'.txt',new TextEncoder().encode(wrap(c.t,mc)));made.push('s'+i+'.txt');
+  parts.push(`drawtext=fontfile=f.ttf:textfile=s${i}.txt:fontsize=${fs}:fontcolor=white:borderw=3:bordercolor=black:x=(w-text_w)/2:y=${yy[c.pos||'bot']}:enable='between(t,${c.s.toFixed(2)},${c.e.toFixed(2)})'`)}
+ await eng.exec(['-i',src,'-vf',parts.join(','),'-c:v','libx264','-preset','ultrafast','-crf',crf,'-c:a','copy','sub.mp4']);made.push('sub.mp4');
+ return 'sub.mp4';
+}
+function deliver(data){
+ const url=URL.createObjectURL(new Blob([data],{type:'video/mp4'})),a=document.createElement('a');
+ const name='grow-video';
+ a.href=url;a.download=name+'.mp4';a.textContent='⬇ Simpan '+name+'.mp4';a.className='go';a.style.cssText='display:block;text-align:center;text-decoration:none;margin:6px 0;padding:10px;border-radius:10px';$('saveLink')?.remove();a.id='saveLink';$('status').after(a);try{a.click()}catch(e){}
+}
+$('exportBtn').onclick=async()=>{
+ if(!clips.length){setStatus('Pilih video dulu.');return}
+ pause();const n=clips.length,ratio=$('ratio').value,crf=$('quality').value,orig=ratio==='original',sp=S.sp;
+ let w,h;if(orig){const k=Math.min(1,1280/Math.max(clips[0].w,clips[0].h));w=Math.round(clips[0].w*k/2)*2;h=Math.round(clips[0].h*k/2)*2}else[w,h]={'9:16':[720,1280],'1:1':[720,720],'16:9':[1280,720]}[ratio];
+ $('exportBtn').disabled=true;setProgress(0);setStatus('Menyiapkan mesin export… (pertama kali perlu internet)');
+ const made=[];
+ try{
+  const eng=await loadEngine(),d=[],names=new Map(),pc={};
+  for(let i=0;i<n;i++){
+   const c=clips[i];let inn=names.get(c.f);
+   setStatus('Memproses klip '+(i+1)+'/'+n+'…');
+   if(!inn){const ext=(c.f.name.split('.').pop()||'mp4').toLowerCase().replace(/[^a-z0-9]/g,'')||'mp4';inn='in'+names.size+'.'+ext;await eng.writeFile(inn,new Uint8Array(await c.f.arrayBuffer()));made.push(inn);names.set(c.f,inn);pc[inn]=await probe(eng,inn)}
+   const noA=!pc[inn].audio||S.mute,out='n'+i+'.mp4',ins=['-ss',String(c.s),'-i',inn],outs=['-t',String((c.e-c.s)/sp)];
+   if(noA){ins.push('-f','lavfi','-i','anullsrc=r=44100:cl=stereo');outs.push('-map','0:v','-map','1:a','-shortest')}
+   else outs.push('-af','volume='+S.vol+(sp!==1?',atempo='+sp:''));
+   await eng.exec([...ins,...outs,'-vf',vfs(w,h,orig,sp),'-c:v','libx264','-preset','ultrafast','-crf',crf,'-c:a','aac','-ar','44100','-ac','2','-b:a','128k',out]);
+   made.push(out);d.push((await probe(eng,out)).dur);
+  }
+  let cur2='n0.mp4';
+  if(n>1){
+   setStatus('Menggabungkan '+n+' klip…');
+   const ins=[];for(let i=0;i<n;i++)ins.push('-i','n'+i+'.mp4');
+   let fc,mv='[v]',ma='[a]';
+   if(!S.tr)fc=clips.map((_,i)=>`[${i}:v][${i}:a]`).join('')+`concat=n=${n}:v=1:a=1[v][a]`;
+   else{const D=Math.max(0.2,Math.min(0.8,Math.min(...d)/2));let off=0,lv='[0:v]',la='[0:a]';fc='';
+    for(let i=1;i<n;i++){off+=d[i-1]-D;fc+=`${lv}[${i}:v]xfade=transition=${S.tr}:duration=${D}:offset=${off.toFixed(3)}[v${i}];${la}[${i}:a]acrossfade=d=${D}[a${i}];`;lv=`[v${i}]`;la=`[a${i}]`}
+    fc=fc.slice(0,-1);mv=lv;ma=la}
+   await eng.exec([...ins,'-filter_complex',fc,'-map',mv,'-map',ma,'-c:v','libx264','-preset','ultrafast','-crf',crf,'-c:a','aac','-b:a','128k','-movflags','+faststart','m.mp4']);
+   made.push('m.mp4');cur2='m.mp4';
+  }
+  let items=S.texts.map(x=>({...x}));
+  if(S.sub){const segs=await transcribe(eng,cur2,S.sub,S.model);items=items.concat(segs.map(c=>({s:c.s,e:c.e,t:c.t,pos:'bot'})))}
+  if(items.length)cur2=await burn(eng,cur2,items,w,h,crf,made);
+  deliver(await eng.readFile(cur2));
+  setProgress(100);setStatus('Selesai! Tekan tombol Simpan di bawah.');
+ }catch(err){console.error(err);setStatus('Export gagal ['+(err&&err.message?err.message:err)+']');setProgress(0,false)}
+ finally{for(const m of made){try{await ffmpeg?.deleteFile(m)}catch(e){}}$('exportBtn').disabled=false}
+};
+applyFx();renderTl();setTimeout(fit,50);
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script>
+</body></html>
