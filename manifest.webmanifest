@@ -3,7 +3,7 @@
   "short_name": "GROW STUDIO",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#101114",
-  "theme_color": "#101114",
-  "icons": []
+  "background_color": "#0e1013",
+  "theme_color": "#0e1013",
+  "description": "Free-first AI video creator workspace"
 }
